@@ -1,20 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const donorRoutes = require("./routes/donorRoutes");
 
 const app = express();
 app.use(express.json());
+app.use("/api/donors", donorRoutes);
 app.use(cors());
 
-// 🔹 Connect to MongoDB Atlas
-mongoose
-  .connect(
-    "mongodb+srv://thanujavagu:Thanu2004@cluster0.jhc9n.mongodb.net/Blood?retryWrites=true&w=majority&appName=Cluster0",
-    { dbName: "Blood" }
-  )
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log("Database Connection Failed:", err));
-
+mongoose.connect("mongodb+srv://thanujavagu:Thanu2004@cluster0.jhc9n.mongodb.net/Blood?retryWrites=true&w=majority&appName=Cluster0", {
+  dbName: "Blood",
+})
+.then(() => console.log("MongoDB Connected"))
+.catch((err) => console.log("Database Connection Failed:", err));
+ 
 // 🔹 Define Schema & Model
 const DoanteSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -25,18 +24,32 @@ const DoanteSchema = new mongoose.Schema({
   Region: { type: String, required: true },
 });
 
-const Doante = mongoose.model("Doante", DoanteSchema);
+const Doante = mongoose.models.Doante || mongoose.model("Doante", DoanteSchema);
+
 
 // 🔹 POST: Add a Donor
-app.post('/api/Doante/all', async (req, res) => {
+app.post("/api/Doante", async (req, res) => {
   try {
-      const newData = new Doante(req.body); // Create a new Mongoose document
-      const result = await newData.save();  // Save to DB
-      res.status(201).json({ message: 'Data inserted successfully', data: result });
-  } catch (err) {
-      res.status(500).json({ error: err.message });
+    const { name, bloodGroup, Region, phoneNumber, AlternatePhoneNumber, willingOrNot } = req.body;
+
+    const newDonor = new Doante({
+      name,
+      bloodGroup,
+      Region,
+      phoneNumber,
+      AlternatePhoneNumber,
+      willingOrNot,
+    });
+
+    await newDonor.save();
+    res.status(201).json({ message: "Donor added successfully" });
+  } catch (error) {
+    console.error("❌ Server Error:", error);
+    res.status(500).json({ error: "Server error" });
   }
 });
+
+
 
 // 🔹 GET: Fetch All Donors
 app.get('/api/Doante/all', async (req, res) => {
@@ -49,34 +62,33 @@ app.get('/api/Doante/all', async (req, res) => {
 });
 
 // 🔹 GET: Search Donors by Blood Group & Region
+// 🔹 GET: Search Donors by Blood Group or Region (or both)
 app.get("/api/Doante/search", async (req, res) => {
   try {
     const { bloodGroup, Region } = req.query;
 
-    if (!bloodGroup || !Region) {
-      console.log("❌ Missing parameters:", req.query);
-      return res.status(400).json({ error: "Missing search parameters" });
+    // If both are missing, return error
+    if (!bloodGroup && !Region) {
+      return res.status(400).json({ error: "Please provide at least one search parameter: bloodGroup or Region" });
     }
 
-    console.log("🔎 Searching for:", { bloodGroup, Region });
-
-    // 🔹 Escape Special Characters (like `+`)
+    // 🔹 Escape regex safely
     const escapeRegex = (text) => text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-    const query = { 
-      bloodGroup: { $regex: `^${escapeRegex(bloodGroup)}$`, $options: "i" },  
-      Region: { $regex: `^${Region}$`, $options: "i" }
-    };
-
-    console.log("📌 Executing Query:", query);
+    // 🔍 Build dynamic query
+    let query = {};
+    if (bloodGroup) {
+      query.bloodGroup = { $regex: `^${escapeRegex(bloodGroup)}$`, $options: "i" };
+    }
+    if (Region) {
+      query.Region = { $regex: `^${escapeRegex(Region)}$`, $options: "i" };
+    }
 
     const donors = await Doante.find(query);
-    console.log("✅ Found donors:", donors.length, donors);
-
     res.json(donors.length > 0 ? donors : []);
 
   } catch (error) {
-    console.error("❌ Database error:", error);
+    console.error("❌ Search Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });

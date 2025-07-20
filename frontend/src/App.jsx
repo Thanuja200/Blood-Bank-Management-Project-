@@ -1,9 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import DonorForm from "./components/DonorForm";
 
 const App = () => {
-  const [bloodGroup, setBloodGroup] = useState('');
-  const [location, setLocation] = useState('');
+  const [bloodGroup, setBloodGroup] = useState("");
+  const [location, setLocation] = useState("");
   const [results, setResults] = useState([]);
 
   const handleSearch = async () => {
@@ -15,7 +15,7 @@ const App = () => {
   };
 
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       <h1>Blood Bank Search</h1>
       <input
         type="text"
@@ -30,11 +30,16 @@ const App = () => {
         onChange={(e) => setLocation(e.target.value)}
       />
       <button onClick={handleSearch}>Search</button>
+
       <ul>
         {results.map((item) => (
-          <li key={item._id}>{item.name} - {item.bloodGroup} - {item.location} - {item.contact}</li>
+          <li key={item._id}>
+            {item.name} - {item.bloodGroup} - {item.location} - {item.contact}
+          </li>
         ))}
       </ul>
+
+      <DonorForm />
     </div>
   );
 };
